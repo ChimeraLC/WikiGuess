@@ -19,11 +19,17 @@ int main(int argc, char **argv)
         struct addrinfo *result = NULL,
                         *ptr = NULL,
                         hints;
-        const char *sendbuf = "this is a test";
         char recvbuf[DEFAULT_BUFLEN];
         int iRet;
         int recvbuflen = DEFAULT_BUFLEN;
 
+        // Ask for username
+        char sendbuf[100] = "Connection recieved from: ";
+        char name[100];
+        printf("Enter username: ");
+        scanf("%s", name);                                                      // TODO: check length
+        strcat(sendbuf, name);
+        
         // Validate the parameters
         if (argc != 2) {
                 printf("usage: %s server-name\n", argv[0]);
@@ -90,6 +96,24 @@ int main(int argc, char **argv)
         }
 
         printf("Bytes Sent: %d\n", iRet);
+
+        // Temporary setup
+        char data[100];
+        while(true) {
+                printf("Enter data: ");
+                scanf("%s", data);
+                if (strcmp(data, "quit") == 0) {
+                        break;
+                }
+
+                iRet = send( ConnectSocket, data, (int)strlen(data), 0 );
+                if (iRet == SOCKET_ERROR) {
+                        printf("send failed with error: %d\n", WSAGetLastError());
+                        closesocket(ConnectSocket);
+                        WSACleanup();
+                        return 1;
+                }
+        }
 
         // shutdown the connection since no more data will be sent
         iRet = shutdown(ConnectSocket, SD_SEND);

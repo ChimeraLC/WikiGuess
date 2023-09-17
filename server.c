@@ -109,14 +109,17 @@ main(int argc, char **argv)
                         return 1;
                 }
                 printf("Bytes sent: %d\n", iSent);
+
+                // Clear the buffer
+                memset(recvbuf, 0, strlen(recvbuf));
                 }
                 else if (iSent == 0)
-                printf("Connection closing...\n");
+                        printf("Connection closing...\n");
                 else  {
-                printf("recv failed with error: %d\n", WSAGetLastError());
-                closesocket(ClientSocket);
-                WSACleanup();
-                return 1;
+                        printf("recv failed with error: %d\n", WSAGetLastError());
+                        closesocket(ClientSocket);
+                        WSACleanup();
+                        return 1;
                 }
 
         } while (iRet > 0);
