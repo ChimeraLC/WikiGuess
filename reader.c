@@ -2,6 +2,8 @@
  
 #include <stdio.h>
 #include <curl/curl.h>
+#include "bloom.h"
+
 struct page_data {
 	char *data;
 	size_t len;
@@ -103,14 +105,6 @@ main(int argc, char **argv)  {
 	// Global cleanup
 	curl_global_cleanup();
 
-	// Parse data from webpage html
-	//char *page_pointer = strstr(p_data.data, "pages");
-	//page_pointer[20] = '\0';
-	//printf("%s\n", page_pointer + 9);
-
-	if (p_data.len > 11000) p_data.data[10000] = '\0';
-	//printf("%s", p_data.data);
-
 	// Parse through the html data
 	char *left_pointer = p_data.data;
 	char *right_pointer = p_data.data;
@@ -139,9 +133,12 @@ main(int argc, char **argv)  {
 	left_pointer = strstr(right_pointer + 1, "extract") + 10;
 	right_pointer = left_pointer;
 
+	// Initialize bloom filter
+	init_filter(100, 0.01);
+
 	// Parse through contents
 	int bracket_count = 0;	// Skip delimiters
-	while (right_pointer) {
+	while (right_pointer[0] != '\0') {
 		if (right_pointer[0] == '<') {
 			if (left_pointer < right_pointer - 1) {
 				right_pointer[0] = '\0';
@@ -157,7 +154,6 @@ main(int argc, char **argv)  {
 		}
 
 		if (bracket_count == 0) {
-			
 			// Skip escape characters
 			if (right_pointer[0] == '\\') {
 				right_pointer[0] = '\0';
@@ -174,21 +170,18 @@ main(int argc, char **argv)  {
 				right_pointer[0] = '\0';
 				if (left_pointer < right_pointer - 1) {
 					printf("%s ", left_pointer);
+					//insert(left_pointer);
 				}
 				left_pointer = right_pointer + 1;
 			}
 		}
 		right_pointer++;
 	}
-	
-	// Parse contents
-
-	
-	printf("%s\n", left_pointer);
 
 	//printf("%s\n", p_data.data);
 	free(p_data.data);
 
+	printf("Completed");
 	return 0;
 
 }
