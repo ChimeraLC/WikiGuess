@@ -50,7 +50,20 @@ int main(int argc, char **argv)
         // Ask for username
         char sendbuf[100] = "Connection recieved from: ";
         char name[100];
-        printf("Enter username: ");
+        fgets(name, 100, stdin); 
+        int i = 0;
+        // Cut out initial spaces
+        while (name[i] == ' ') {
+                i++;
+        }
+        int lead = i;
+        // Cut out newline elements
+        while (name[i] != '\0' && name[i] != '\n') {
+                name[i-lead] = name[i];
+                i++;
+        }
+        // Set end of string
+        name[i] = '\0';
         scanf("%s", name);                                                      // TODO: check length
         strcat(sendbuf, name);
         
@@ -138,7 +151,21 @@ int main(int argc, char **argv)
         char data[100];
         while(true) {
                 printf("Enter data: ");
-                fgets(data, 100, stdin);                                        // TODO: parse out extra elements (like \n)
+                fgets(data, 100, stdin); 
+                int i = 0;
+                // Cut out initial spaces
+                while (data[i] == ' ') {
+                        i++;
+                }
+                int lead = i;
+                // Cut out newline elements
+                while (data[i] != '\0' && data[i] != '\n') {
+                        data[i-lead] = data[i];
+                        i++;
+                }
+                // Set end of string
+                data[i] = '\0';
+
                 if (strcmp(data, "quit") == 0) {
                         break;
                 }
