@@ -1,20 +1,21 @@
 // This file handles the getting of the wikipedia page alongside parsing the words
  
 #include <stdio.h>
+#include <stdint.h>
 #include <curl/curl.h>
 #include "bloom.h"
 
 struct page_data {
 	char *data;
-	size_t len;
+	uint64_t len;
 };
 
 // Callback function used for 
-size_t 
-write_callback(void *new_data, size_t size, size_t nmemb, struct page_data *p_data)
+uint64_t 
+write_callback(void *new_data, uint64_t size, uint64_t nmemb, struct page_data *p_data)
 {
 	// Calculate new size required
-	size_t new_len = p_data->len + size*nmemb;
+	uint64_t new_len = p_data->len + size*nmemb;
 	// Allocate new space for data
 	char *ptr = realloc(p_data->data, new_len+1);
 	// Check that realloc succeeds
@@ -31,19 +32,7 @@ write_callback(void *new_data, size_t size, size_t nmemb, struct page_data *p_da
 }
 
 int
-main(int argc, char **argv)  {
-
-	// Parse the input arguments
-	if (argc < 2) {
-		printf("usage: %s Wikipedia Page Title\n", argv[0]);
-		return 1;
-	}
-	// Combine remaining arguments as wiki title				// Todo, parsing special characters?
-	char *wiki_page = argv[1];
-	for (int i = 2; i < argc; i++) {
-		strcat(wiki_page, " ");
-		strcat(wiki_page, argv[i]);
-	}
+parse_page(char *wiki_page)  {
 
 	// Replace spaces with '_'
 	char *cur_pos = strchr(wiki_page, ' ');
@@ -125,7 +114,7 @@ main(int argc, char **argv)  {
 	left_pointer = strstr(right_pointer + 1, "title") + 8;
 	right_pointer = strstr(left_pointer, "\"");
 	right_pointer[0] = '\0';
-	
+
 	char *title = left_pointer;
 	printf("Page title: %s\n", title);
 
@@ -134,15 +123,20 @@ main(int argc, char **argv)  {
 	right_pointer = left_pointer;
 
 	// Initialize bloom filter
-	init_filter(100, 0.01);
-
+	// Estimate required number of values
+	uint64_t estimate = p_data.len/5; 	// Average of 5 letters per word
+	init_filter(estimate, 0.001);
+	u_int64 total_words = 0;
 	// Parse through contents
 	int bracket_count = 0;	// Skip delimiters
 	while (right_pointer[0] != '\0') {
+		// As long as we are within a delimiter, skip values
 		if (right_pointer[0] == '<') {
-			if (left_pointer < right_pointer - 1) {
+			if (bracket_count == 0 && left_pointer < right_pointer - 1) {
 				right_pointer[0] = '\0';
-				printf("%s ", left_pointer);
+				//printf("%s ", left_pointer);
+				insert(left_pointer);
+				total_words++;
 			}
 			bracket_count++;
 		}
@@ -158,30 +152,82 @@ main(int argc, char **argv)  {
 			if (right_pointer[0] == '\\') {
 				right_pointer[0] = '\0';
 				if (left_pointer < right_pointer - 1) {
-					printf("%s ", left_pointer);
+					// Insert into filter
+					//printf("%s ", left_pointer);
+					insert(left_pointer);
+					total_words++;
 				}
-				right_pointer++;				// TODO: does not accurately cover all cases
+				right_pointer++;				// TODO: does not accurately cover all cases, like \u characters
 				left_pointer = right_pointer + 1;
 			}
 			// Find word endings
-			if (right_pointer[0] == ',' || right_pointer[0] == ' ' || 
+			if (right_pointer[0] == ',' || right_pointer[0] == ' ' || // Includes most common word separaters
 			right_pointer[0] == '(' || right_pointer[0] == ')' || 
 			right_pointer[0] == '.' || right_pointer[0] == ':') {
-				right_pointer[0] = '\0';
+				right_pointer[0] = '\0';			// Grab the most recently passed word
 				if (left_pointer < right_pointer - 1) {
-					printf("%s ", left_pointer);
-					//insert(left_pointer);
+					// Insert into filter
+					//printf("%s ", left_pointer);
+					insert(left_pointer);
+					total_words++;
 				}
 				left_pointer = right_pointer + 1;
 			}
 		}
+		// Continue to next character
 		right_pointer++;
 	}
+	// Display total words
+	printf("Total words: %lld\n", total_words);
 
 	//printf("%s\n", p_data.data);
-	free(p_data.data);
 
-	printf("Completed");
+	// Check false positive rate
+	/*
+	int fp = 0;
+	int length = 10;
+	for (int i = 0; i < 10000; i++) {
+		// Set of characters
+		static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";      
+		// Malloc out length  
+		char *random_string = malloc(sizeof(char) * (length +1));
+     
+		// Generate random keys
+		for (int j = 0; j < length; j++) {            
+			int key = rand() % (int)(sizeof(charset) -1);
+			random_string[j] = charset[key];
+		}
+		// Set end char
+		random_string[length] = '\0';
+
+		// Test bloom filter
+		if (test(random_string)) {
+			fp++;
+		}
+
+		free(random_string);
+	}
+	printf("FP rate: %f\n", (float)fp/10000);
+	
+	// Check if properly contained
+        char data[100];
+	while (true) {
+                printf("Enter data: ");
+                scanf("%s", data);
+                if (strcmp(data, "quit") == 0) {
+                        break;
+                }
+		if (test(data)) {
+			printf("Contains\n");
+		}
+		else {
+			printf("Not contained\n");
+		}
+	}
+	*/
+
+	// Free data before exiting
+	free(p_data.data);
 	return 0;
 
 }

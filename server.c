@@ -7,16 +7,60 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#include "reader.h"
+#include "bloom.h"
 
 #define DEFAULT_BUFLEN 512
-#define DEFAULT_PORT "27015"
+char *port_num = "27015";
+
+void usage();
 
 int
 main(int argc, char **argv)
 {
-        (void) argc;
-        (void) argv;
+        // Parse flags
+        char c;
+        while ((c = getopt (argc, argv, "p:")) != -1) {
+                switch (c)
+                {
+                case 'p':       // Start point of debug
+                        port_num = optarg;
+                        break;
+                case '?':
+                        if (optopt == 'p')
+                        fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+                        else
+                        usage();
+                        return -1;
+                default:
+                        abort ();
+                }
+        }
+        
+
+        // Reading wikipedia page
+	if (optind == argc) {         // Checking input arguments
+		printf("Missing page title");
+		return -1;
+	}
+        char *wiki_page = argv[optind];
+	for (int i = optind + 1; i < argc; i++) {                               // TODO: currently doesn't work if flag at end
+		strcat(wiki_page, " ");
+		strcat(wiki_page, argv[i]);
+	}
+
         int iRet;       // Used to track error codes
+
+        // Call reader that will internally initialize the bloom filter
+        iRet = parse_page(wiki_page);
+        if (iRet != 0) {
+                // End on error
+                printf("Wikipedia page was not able to be gotten\n");
+                return 1;
+        }
+
         int iSent = 0;  // Used to track sent bits
 	WSADATA wsa;    // Windows socket information
         SOCKET ListenSocket = INVALID_SOCKET;   // Listening socket
@@ -43,7 +87,7 @@ main(int argc, char **argv)
 
         
         // Resolve the server address and port
-        iRet = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
+        iRet = getaddrinfo(NULL, port_num, &hints, &result);
         if (iRet != 0 ) {
                 printf("getaddrinfo failed with error: %d\n", iRet);
                 WSACleanup();
@@ -100,6 +144,9 @@ main(int argc, char **argv)
                 if (iRet > 0) {
                 printf("Bytes received: %d\n", iRet);
                 printf("Message: %s\n", recvbuf);
+                if (test(recvbuf)) {
+                        printf("Message contained in filter\n");
+                }
                 // Echo the buffer back to the sender
                 iSent = send( ClientSocket, recvbuf, iRet, 0 );
                 if (send( ClientSocket, recvbuf, iRet, 0 ) == SOCKET_ERROR) {
@@ -138,4 +185,14 @@ main(int argc, char **argv)
         WSACleanup();
 
         return 0;
+}
+
+
+// Usage function, displays inputs
+void
+usage()
+{
+    fprintf(stderr, "Usage: main <server address> [-p <port number>]\n");
+    fprintf(stderr, "Options\n");\
+    fprintf(stderr, "\t-p         Port number (default 27015).\n");
 }

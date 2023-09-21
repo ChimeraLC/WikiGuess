@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <math.h>
 
 
@@ -28,7 +29,7 @@ bool test(char *value);
 
 // Initializes the bloom filter to contain size_t members and have a false positive rate of fp_rate (usually 0.01)
 void
-init_filter(size_t  members, float fp_rate)
+init_filter(uint64_t members, float fp_rate)
 {
         count = members;
         // Calculating the required size
@@ -37,11 +38,9 @@ init_filter(size_t  members, float fp_rate)
         hash_count = (r / count * log(2));
         // Find a power of 2 greater than r
         int ceil_pow = ceil(log(r) / log(2));
-
         // Create an array of bits
         init_array(ceil_pow);
         arr_size = pow(2, ceil_pow);
-
         // Create hash_count many hash functions
         seeds = malloc(hash_count * sizeof(int));
         gen_primes();
@@ -102,17 +101,16 @@ void
 insert(char *value) {
         // Go through each hash function
         for (int i = 0; i < hash_count; i++) {
-                set_bit(hash(value, seeds[i]));
+                set_bit(hash(strlwr(value), seeds[i]));
         }
 }
-
 // Tests if a given value is in the bloom filter
 bool
 test(char *value) {
         // Go through each hash function
         bool included = true;
         for (int i = 0; i < hash_count; i++) {
-                if (!get_bit(hash(value, seeds[i]))) {
+                if (!get_bit(hash(strlwr(value), seeds[i]))) {
                         included = false;
                 }
         }
@@ -135,10 +133,18 @@ hash(char *value, int seed) {
 // Getter and setter methods for the bit array
 void
 set_bit(uint64_t position) {
-        bit_array[position / 8] ^= (1 << (position % 8));
+        bit_array[position / 8] |= (1 << (position % 8));
 }
 
 int
 get_bit(uint64_t position) {
         return (bit_array[position/8] >> (position % 8)) & 0x1;
+}
+
+void
+check() {
+        for (int i =0; i < 40; i++) {
+                if (bit_array[i] != 0)
+                printf("%x\n", bit_array[i]);
+        }
 }

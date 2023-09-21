@@ -1,0 +1,1 @@
+int parse_page(char *wiki_page);

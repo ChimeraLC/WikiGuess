@@ -10,12 +10,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define DEFAULT_BUFLEN 512
-#define DEFAULT_PORT "27015"
+char *port_num = "27015";
+
+void usage();
 
 int main(int argc, char **argv) 
 {
+        // Parse flags
+        char c;
+        while ((c = getopt (argc, argv, "p:")) != -1) {
+                switch (c)
+                {
+                case 'p':       // Start point of debug
+                        port_num = optarg;
+                        break;
+                case '?':
+                        if (optopt == 'p')
+                        fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+                        else
+                        usage();
+                        return -1;
+                default:
+                        abort ();
+                }
+        }
+
         WSADATA wsaData;
         SOCKET ConnectSocket = INVALID_SOCKET;
         struct addrinfo *result = NULL,
@@ -32,11 +54,24 @@ int main(int argc, char **argv)
         scanf("%s", name);                                                      // TODO: check length
         strcat(sendbuf, name);
         
+        // Display message
+        printf("Now awaiting inputs\n");
+        
+
+        // Reading wikipedia page
+	if (optind == argc) {         // Checking input arguments
+                printf("usage: %s server-name\n", argv[0]);
+		return -1;
+	}
+        char *server_name = argv[optind];
+	
+        /*
         // Validate the parameters
         if (argc != 2) {
                 printf("usage: %s server-name\n", argv[0]);
                 return 1;
         }
+        */
 
         // Initialize Winsock
         iRet = WSAStartup(MAKEWORD(2,2), &wsaData);
@@ -51,7 +86,7 @@ int main(int argc, char **argv)
         hints.ai_protocol = IPPROTO_TCP;
 
         // Resolve the server address and port
-        iRet = getaddrinfo(argv[1], DEFAULT_PORT, &hints, &result);
+        iRet = getaddrinfo(server_name, port_num, &hints, &result);
         if ( iRet != 0 ) {
                 printf("getaddrinfo failed with error: %d\n", iRet);
                 WSACleanup();
@@ -103,7 +138,7 @@ int main(int argc, char **argv)
         char data[100];
         while(true) {
                 printf("Enter data: ");
-                scanf("%s", data);
+                fgets(data, 100, stdin);                                        // TODO: parse out extra elements (like \n)
                 if (strcmp(data, "quit") == 0) {
                         break;
                 }
@@ -143,4 +178,13 @@ int main(int argc, char **argv)
         WSACleanup();
 
         return 0;
+}
+
+// Usage function, displays inputs
+void
+usage()
+{
+    fprintf(stderr, "Usage: main <Wikipedia Page Title> [-p <port number>]\n");
+    fprintf(stderr, "Options\n");\
+    fprintf(stderr, "\t-p         Port number (default 27015).\n");
 }
